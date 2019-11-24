@@ -64,16 +64,14 @@ ifneq ($(TARGET_USES_NON_LEGACY_POWERHAL), true)
 LOCAL_SHARED_LIBRARIES := \
     liblog \
     libcutils \
-    libdl \
-    libxml2
+    libdl
 
 LOCAL_SRC_FILES := \
     power.c \
     metadata-parser.c \
     utils.c \
     list.c \
-    hint-data.c \
-    powerhintparser.c
+    hint-data.c
 
 endif
 

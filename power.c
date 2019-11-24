@@ -41,7 +41,7 @@
 #define LOG_TAG "QTI PowerHAL"
 #include <hardware/hardware.h>
 #include <hardware/power.h>
-#include <utils/Log.h>
+#include <log/log.h>
 
 #include "hint-data.h"
 #include "performance.h"
@@ -51,78 +51,75 @@
 
 static struct hint_handles handles[NUM_HINTS];
 
-static int power_device_open(const hw_module_t* module, const char* name,
-        hw_device_t** device);
+static int power_device_open(const hw_module_t* module, const char* name, hw_device_t** device);
 
 static struct hw_module_methods_t power_module_methods = {
     .open = power_device_open,
 };
 
-static void power_init(struct power_module *module) {
+static void power_init(struct power_module* UNUSED(module)) {
     ALOGI("Initing");
 
-    for (int i=0; i<NUM_HINTS; i++) {
-        handles[i].handle       = 0;
-        handles[i].ref_count    = 0;
+    for (int i = 0; i < NUM_HINTS; i++) {
+        handles[i].handle = 0;
+        handles[i].ref_count = 0;
     }
 }
 
-int __attribute__ ((weak)) power_hint_override(struct power_module *module, power_hint_t hint,
-        void *data) {
+int __attribute__((weak)) power_hint_override(struct power_module* UNUSED(module), power_hint_t UNUSED(hint), void* UNUSED(data)) {
     return HINT_NONE;
 }
 
 /* Declare function before use */
 void interaction(int duration, int num_args, int opt_list[]);
 
-static void power_hint(struct power_module *module, power_hint_t hint,
-        void *data) {
+static void power_hint(struct power_module* module, power_hint_t hint, void* data) {
     /* Check if this hint has been overridden. */
     if (power_hint_override(module, hint, data) == HINT_HANDLED) {
         /* The power_hint has been handled. We can skip the rest. */
         return;
     }
-    switch(hint) {
+    switch (hint) {
         case POWER_HINT_VSYNC:
         break;
         case POWER_HINT_VR_MODE:
             ALOGI("VR mode power hint not handled in power_hint_override");
             break;
-        case POWER_HINT_INTERACTION:
-        {
+        case POWER_HINT_INTERACTION: {
             int resources[] = {0x702, 0x20F, 0x30F};
             int duration = 3000;
 
-            interaction(duration, sizeof(resources)/sizeof(resources[0]), resources);
-        }
-        break;
-        //fall through below, hints will fail if not defined in powerhint.xml
+            interaction(duration, sizeof(resources) / sizeof(resources[0]), resources);
+        } break;
+        // fall through below, hints will fail if not defined in powerhint.xml
         case POWER_HINT_SUSTAINED_PERFORMANCE:
         case POWER_HINT_VIDEO_ENCODE:
             if (data) {
                 if (handles[hint].ref_count == 0)
                     handles[hint].handle = perf_hint_enable((AOSP_DELTA + hint), 0);
 
-                if (handles[hint].handle > 0)
-                    handles[hint].ref_count++;
-            }
-            else
-                if (handles[hint].handle > 0)
+                if (handles[hint].handle > 0) handles[hint].ref_count++;
+            } else {
+                if (handles[hint].handle > 0) {
                     if (--handles[hint].ref_count == 0) {
                         release_request(handles[hint].handle);
                         handles[hint].handle = 0;
                     }
-                else
+                } else {
                     ALOGE("Lock for hint: %X was not acquired, cannot be released", hint);
-        break;
+                }
+            }
+            break;
+        default:
+            break;
     }
 }
 
-int __attribute__ ((weak)) set_interactive_override(struct power_module *module, int on) {
+int __attribute__((weak)) set_interactive_override(struct power_module* UNUSED(module), int UNUSED(on)) {
     return HINT_NONE;
 }
 
-void set_interactive(struct power_module *module, int on) {
+void set_interactive(struct power_module* module, int on) {
     if (!on) {
         /* Send Display OFF hint to perf HAL */
         perf_hint_enable(VENDOR_HINT_DISPLAY_OFF, 0);
@@ -138,22 +135,20 @@ void set_interactive(struct power_module *module, int on) {
     ALOGI("Got set_interactive hint");
 }
 
-void set_feature(struct power_module *module, feature_t feature, int state)
-{
+void set_feature(struct power_module* module, feature_t feature, int state) {
     set_device_specific_feature(module, feature, state);
 }
 
-static int power_device_open(const hw_module_t* module, const char* name,
-        hw_device_t** device) {
+static int power_device_open(const hw_module_t* module, const char* name, hw_device_t** device) {
     int status = -EINVAL;
     if (module && name && device) {
         if (!strcmp(name, POWER_HARDWARE_MODULE_ID)) {
             power_module_t *dev = (power_module_t *)malloc(sizeof(*dev));
 
-            if(dev) {
+            if (dev) {
                 memset(dev, 0, sizeof(*dev));
 
-                if(dev) {
+                if (dev) {
                     /* initialize the fields */
                     dev->common.module_api_version = POWER_MODULE_API_VERSION_0_3;
                     dev->common.tag = HARDWARE_DEVICE_TAG;
@@ -170,8 +165,7 @@ static int power_device_open(const hw_module_t* module, const char* name,
                 } else {
                     status = -ENOMEM;
                 }
-            }
-            else {
+            } else {
                 status = -ENOMEM;
             }
         }
